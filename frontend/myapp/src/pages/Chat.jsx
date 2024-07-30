@@ -1,14 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import Contacts from '../components/Contacts';
 import Welcome from '../components/Welcome';
+import ChatContainer from '../components/ChatContainer';
+import {io} from "socket.io-client"
 
 function Chat() {
+  const socket = useRef();
   const navigate = useNavigate();
   const [contacts, setContacts] = useState([]);
   const [currentUser, setCurrentUser] = useState(undefined);
   const [currentChat, setCurrentChat] = useState(undefined);
+   const [isloaded,setIsloaded] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -16,11 +20,24 @@ function Chat() {
       if (!user) {
         navigate('/login');
       } else {
+        try{
         setCurrentUser(JSON.parse(user));
+        setIsloaded(true);
+        }
+        catch (error) {
+          console.error('Error parsing user data:', error);
+          // Handle error when parsing user data
+        }
       }
     };
     checkUser();
   }, [navigate]);
+  useEffect(()=>{
+    if(currentUser){
+      socket.current =io("http://localhost:5000")
+      socket.current.emit("add-user", currentUser._id);
+    }
+  },[currentUser])
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,11 +71,11 @@ function Chat() {
     <Container>
       <div className="container">
         <Contacts contacts={contacts} currentUser={currentUser} changeChat={handleChatChange} />
-        {currentChat === undefined && currentUser ? (
+        { isloaded && currentChat === undefined && currentUser ? (
           <Welcome currentUser={currentUser} />
         ) : (
-          // Replace with your actual chat component
-          <div>Chat Container</div>
+
+         <ChatContainer currentChat={currentChat} currentUser={currentUser} socket={socket} />
         )}
       </div>
     </Container>
